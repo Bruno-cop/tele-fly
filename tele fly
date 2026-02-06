@@ -1,0 +1,91 @@
+-- Serviços
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- CONFIG
+local flySpeed = 50
+local teleportOffset = Vector3.new(0, 3, 0) -- evita spawnar dentro do chão
+
+-- VARIÁVEIS DO FLY
+local flying = false
+local bodyVelocity
+local bodyGyro
+local flyConnection
+
+-- FUNÇÕES DO FLY
+local function startFly()
+	bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	bodyVelocity.Parent = humanoidRootPart
+
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bodyGyro.Parent = humanoidRootPart
+
+	flyConnection = RunService.RenderStepped:Connect(function()
+		local moveDir = Vector3.zero
+		local camCF = workspace.CurrentCamera.CFrame
+
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+			moveDir += camCF.LookVector
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+			moveDir -= camCF.LookVector
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+			moveDir -= camCF.RightVector
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+			moveDir += camCF.RightVector
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+			moveDir += Vector3.new(0,1,0)
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+			moveDir -= Vector3.new(0,1,0)
+		end
+
+		if moveDir.Magnitude > 0 then
+			bodyVelocity.Velocity = moveDir.Unit * flySpeed
+		else
+			bodyVelocity.Velocity = Vector3.zero
+		end
+
+		bodyGyro.CFrame = camCF
+	end)
+end
+
+local function stopFly()
+	if flyConnection then flyConnection:Disconnect() end
+	if bodyVelocity then bodyVelocity:Destroy() end
+	if bodyGyro then bodyGyro:Destroy() end
+end
+
+-- INPUT
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+
+	-- TELEPORT PARA O MOUSE (R)
+	if input.KeyCode == Enum.KeyCode.T then
+		if mouse.Hit then
+			humanoidRootPart.CFrame = mouse.Hit + teleportOffset
+		end
+	end
+
+	-- FLY (F1)
+	if input.KeyCode == Enum.KeyCode.F1 then
+		flying = not flying
+		if flying then
+			startFly()
+		else
+			stopFly()
+		end
+	end
+end)
